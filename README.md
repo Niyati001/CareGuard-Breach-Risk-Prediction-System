@@ -33,7 +33,7 @@
 
 ### Feature Importance (SHAP)
 
-![SHAP Summary](plots/shap_summary.png)
+![SHAP Summary](plots/shap_summary%20(1).png)
 
 ---
 
