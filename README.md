@@ -1,7 +1,39 @@
-# ED Breach Prediction — Simulation + Machine Learning
+# CareGuard: ED Breach Risk Prediction via Simulation + Explainable ML
 
-> Predicting 4-hour wait breaches in a hospital Emergency Department using  
-> discrete-event simulation (SimPy) and XGBoost with SHAP explainability.
+> A real-time decision-support system to predict 4-hour Emergency Department (ED) breaches using discrete-event simulation and interpretable machine learning.
+
+---
+
+## TL;DR
+
+- Simulated 158,000+ patient records using a custom SimPy ED model
+- Built an XGBoost classifier to predict breach risk at arrival
+- Achieved:
+  - AUC ~0.93 (with leakage features — upper bound)
+  - AUC ~0.78 (real-time deployable model — no post-arrival features)
+- Used SHAP to identify key drivers of delays
+- Designed for operational decision support in hospitals
+
+---
+
+## Results Snapshot
+
+### Model Performance
+
+| Metric | Score |
+|---|---|
+| ROC AUC (real-time deployable model) | **0.78** |
+| ROC AUC (with leakage features — upper bound) | **0.93** |
+| Model | XGBoost |
+| Training records | ~158,000 patients |
+| Simulations run | 5,000 |
+| Breach rate in dataset | 40% |
+
+![ROC Curve](plots/roc_curve.png)
+
+### Feature Importance (SHAP)
+
+![SHAP Summary](plots/shap_summary.png)
 
 ---
 
@@ -9,37 +41,9 @@
 
 Hospital Emergency Departments in many countries operate under a **4-hour target** — every patient should be seen, treated, and discharged (or admitted) within 4 hours of arrival. Breaching this target has real consequences: financial penalties, patient harm, and staff burnout.
 
-This project asks: **can we predict, early in a patient's visit, whether they will breach the 4-hour target?** And if so, **which factors matter most?**
+This project asks: **Can we predict, early in a patient's visit, whether they will breach the 4-hour target?** And if so, **which factors matter most?**
 
-Since real patient-level ED data is difficult to obtain, we built a **discrete-event simulation** of a hospital ED using SimPy — generating 158,000+ synthetic patient encounters across 5,000 different ED configurations. We then trained an XGBoost classifier on that data, achieving an **AUC of 0.936** on the held-out test set.
-
----
-
-## Key Results
-
-| Metric | Score |
-|---|---|
-| ROC AUC | **0.936** |
-| Model | XGBoost |
-| Training records | ~158,000 patients |
-| Simulations run | 5,000 |
-| Breach rate in dataset | 40% |
-
-### SHAP — What drives breaches?
-
-![SHAP Summary](shap_summary.png)
-
-The top drivers of breach prediction (in order of importance):
-
-1. **Triage level** — counter-intuitively, higher triage numbers (less urgent) breach *more* — they wait longer because critical patients (level 1–2) are prioritised, causing level 3–4 patients to queue
-2. **Arrival hour** — patients arriving later in a shift face a more congested ED; breach risk rises as the shift progresses
-3. **Lab capacity** — low lab capacity creates downstream bottlenecks even after the doctor consultation ends
-4. **Queue length on arrival** — arriving to a queue of 3+ is a near-certain signal of a long wait
-5. **Doctor-to-arrival ratio** — the single most useful staffing signal; low ratio = overwhelmed ED
-
-### ROC Curve
-
-![ROC Curve](roc_curve.png)
+Since real patient-level ED data is difficult to obtain, we built a **discrete-event simulation** of a hospital ED using SimPy — generating 158,000+ synthetic patient encounters across 5,000 different ED configurations. We then trained an XGBoost classifier on that data, achieving an **AUC of 0.78** on the held-out test set using only features available at the time of prediction.
 
 ---
 
@@ -55,11 +59,11 @@ SimPy discrete-event simulation
         ↓
 158,000 patient records with 12 raw features
         ↓
-Feature engineering (6 derived features)
+Feature engineering (6 derived features) + leakage audit
         ↓
 XGBoost classifier + SHAP explainability
         ↓
-AUC 0.936 | Deployable real-time prediction model
+AUC 0.78 | Real-time deployable model
 ```
 
 ---
@@ -98,10 +102,10 @@ Discharge → record total time → label as breach/no breach
 
 | Parameter | Range | Description |
 |---|---|---|
-| `num_doctors` | 2 – 8 | Doctors on shift |
+| `num_doctors` | 2 – 6 | Doctors on shift |
 | `num_triage_nurses` | 1 – 4 | Triage nurses available |
-| `num_beds` | 5 – 20 | ED beds |
-| `arrival_rate` | 5 – 15 patients/hr | Mean patient demand |
+| `num_beds` | 5 – 12 | ED beds |
+| `arrival_rate` | 10 – 30 patients/hr | Mean patient demand |
 | `lab_capacity` | 1 – 4 | Lab processing slots |
 
 Each of 5,000 runs sampled a random combination of these parameters. 40% of runs were deliberately stress-configured (low doctors, high arrivals) to ensure sufficient breach events for the model to learn from.
@@ -148,10 +152,10 @@ Each run simulates **24 hours** of ED operation, allowing queues to build and cl
 
 ### Leakage Audit
 
-`wait_for_doctor_mins` and `total_time_mins` are excluded from the deployable model — they are not known at the time of prediction (when the patient has just arrived). Two model versions were trained:
+`wait_for_doctor_mins` and `total_time_mins` are excluded from the deployable model — they are not known at the time of prediction. Two model versions were trained:
 
-- **Version A (full features):** includes `wait_for_doctor_mins` — upper bound on performance
-- **Version B (real-time):** excludes post-arrival time features — deployable model
+- **Version A (full features):** includes `wait_for_doctor_mins` — AUC 0.93, upper bound on performance
+- **Version B (real-time):** excludes post-arrival time features — AUC 0.78, deployable model
 
 ---
 
@@ -159,22 +163,22 @@ Each run simulates **24 hours** of ED operation, allowing queues to build and cl
 
 ### Breach rate by feature
 
-![Breach rates by feature](plot_02_breach_rates_by_feature.png)
+![Breach rates by feature](plots/plot_02_breach_rates_by_feature.png)
 
 Key findings:
-- Triage level 2 (Urgent) breaches at **60%** — these patients are sick enough to need a doctor quickly but not immediately triaged as critical, causing long queued waits
+- Triage level 2 (Urgent) breaches at **60%** — these patients are sick enough to need a doctor quickly, but not immediately triaged as critical, causing long queued waits
 - Queue length on arrival shows a strong monotonic relationship with breach rate (8% → 50% from empty to 10+ queue)
 - Arrival rate alone has a weak effect — staffing adequacy matters more than raw demand
 
 ### Correlation matrix
 
-![Correlation heatmap](plot_03_correlation_heatmap.png)
+![Correlation heatmap](plots/plot_03_correlation_heatmap.png)
 
 Notable: `wait_for_doctor_mins` and `total_time_mins` are highly correlated with `breached` (0.73, 0.76) — confirming they are leakage risks in a real-time prediction scenario.
 
 ### Engineered features
 
-![Engineered features](plot_04_engineered_features.png)
+![Engineered features](plots/plot_04_engineered_features.png)
 
 `complexity_score = 6` (triage level 2 + lab required) shows the highest breach rate at **63%** — the most dangerous patient profile in this simulation.
 
@@ -185,7 +189,7 @@ Notable: `wait_for_doctor_mins` and `total_time_mins` are highly correlated with
 ### Model: XGBoost
 
 XGBoost was selected as the primary model for three reasons:
-1. Handles the non-linear interactions between staffing and demand features natively
+1. Handles non-linear interactions between staffing and demand features natively
 2. Robust to the feature scale differences in this dataset (some features range 0–1, others 0–1440)
 3. Compatible with SHAP for exact Shapley value computation
 
@@ -197,7 +201,7 @@ XGBoost was selected as the primary model for three reasons:
 
 ### Explainability: SHAP Values
 
-SHAP (SHapley Additive exPlanations) assigns each feature a contribution score for each individual prediction — not just a global importance ranking. This means we can explain *why* the model predicted breach for a specific patient.
+SHAP (SHapley Additive exPlanations) assigns each feature a contribution score for each prediction — not just a global importance ranking. This means we can explain *why* the model predicted a breach for a specific patient.
 
 Example interpretation from the SHAP plot:
 - A patient with **high triage_level** (red dot, right side) = higher breach probability
@@ -210,7 +214,7 @@ Example interpretation from the SHAP plot:
 
 ### Challenge 1: Patients not completing journeys
 
-**Problem:** Initial 8-hour simulation runs caused patients still mid-queue at `sim_duration` to be dropped from the dataset. With stressed configs generating 15+ arrivals/hr, most patients were queued and never discharged — dataset was nearly empty for stressed runs.
+**Problem:** Initial 8-hour simulation runs caused patients still mid-queue at `sim_duration` to be dropped from the dataset. With stressed configs generating 15+ arrivals/hr, most patients were queued and never discharged — the dataset was nearly empty for stressed runs.
 
 **Solution:** Extended simulation to 24 hours, allowing queues to drain naturally. Patient counts per run went from 10–20 to 30–300.
 
@@ -230,7 +234,7 @@ Example interpretation from the SHAP plot:
 
 ### Challenge 3: Feature leakage
 
-**Problem:** `wait_for_doctor_mins` correlated 0.73 with the target. Including it produces a model that can't be deployed — you don't know the wait time before the patient has waited.
+**Problem:** `wait_for_doctor_mins` correlated 0.73 with the target. Including it produces a model that cannot be deployed — you don't know the wait time before the patient has waited.
 
 **Solution:** Explicit leakage audit. Trained two model versions and documented the difference clearly. The real-time model (Version B) is the deployable one.
 
@@ -240,7 +244,7 @@ Example interpretation from the SHAP plot:
 
 ### Challenge 4: sim_id as a spurious feature
 
-**Problem:** `sim_id` (the simulation run index) appeared in SHAP feature importance. The model learned that certain simulation batches were more stressed than others — this is an artifact of how simulations were ordered, not a real signal.
+**Problem:** `sim_id` (the simulation run index) appeared in SHAP feature importance. The model was learning that certain simulation batches were more stressed than others — an artifact of how simulations were ordered, not a real signal.
 
 **Solution:** Removed `sim_id` from the feature set entirely.
 
@@ -250,7 +254,7 @@ Example interpretation from the SHAP plot:
 
 ## What-If Analysis
 
-One of the most valuable outputs of this approach is the ability to run counterfactual simulations:
+One of the most valuable outputs of this approach is the ability to run counterfactual simulations — impossible with observational data alone:
 
 | Scenario | Breach rate |
 |---|---|
@@ -260,7 +264,7 @@ One of the most valuable outputs of this approach is the ability to run counterf
 | Reduce arrival rate by 20% (demand management) | ~35% |
 | Add 1 doctor + reduce arrivals | ~18% |
 
-This is the kind of analysis that is impossible with a model trained on observational data alone — you cannot randomly assign staffing levels in a real hospital. Simulation makes it possible.
+You cannot randomly assign staffing levels in a real hospital. Simulation makes this analysis possible.
 
 ---
 
@@ -324,10 +328,10 @@ jupyter notebook dataGen_Sim.ipynb
 | Triage level 2 patients are the highest-risk group | These patients need proactive queue management, not just triage prioritisation |
 | Queue length on arrival is the most actionable real-time signal | A live queue-length dashboard could enable early intervention |
 | Doctor-to-arrival ratio outperforms raw staffing numbers | Staffing decisions should be demand-relative, not absolute |
-| AUC 0.936 is achievable with simulation-generated data | Synthetic data from well-designed simulations can train production-grade models |
+| AUC 0.78 is achievable with only arrival-time features | A deployable real-time tool is viable with simulation-generated training data |
 
 ---
 
 ## Author
 
-**Niyati** (102303356)
+**Niyati Gupta** (102303356)
