@@ -1,0 +1,38 @@
+{
+  "features_full": [
+    "num_doctors",
+    "num_triage_nurses",
+    "num_beds",
+    "arrival_rate",
+    "lab_capacity",
+    "triage_level",
+    "needs_lab",
+    "arrival_hour",
+    "queue_length_on_arrival",
+    "wait_for_doctor_mins",
+    "doctor_to_arrival_ratio",
+    "bed_pressure",
+    "is_high_triage",
+    "arrived_to_congestion",
+    "complexity_score",
+    "shift_pressure"
+  ],
+  "features_realtime": [
+    "num_doctors",
+    "num_triage_nurses",
+    "num_beds",
+    "arrival_rate",
+    "lab_capacity",
+    "triage_level",
+    "needs_lab",
+    "arrival_hour",
+    "queue_length_on_arrival",
+    "doctor_to_arrival_ratio",
+    "bed_pressure",
+    "is_high_triage",
+    "arrived_to_congestion",
+    "complexity_score",
+    "shift_pressure"
+  ],
+  "target": "breached"
+}
