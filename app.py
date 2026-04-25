@@ -308,7 +308,6 @@ with col_pred:
 
     # Gauge bar
     fig_gauge, ax = plt.subplots(figsize=(5, 0.6))
-    ax.legend(loc="upper left", bbox_to_anchor=(0, 1.15))
     ax.barh(0, 100, color="#e9ecef", height=0.5)
     ax.barh(0, breach_pct, color=risk_color, height=0.5)
     ax.axvline(35, color="white", linewidth=1.5, linestyle="--", alpha=0.7)
