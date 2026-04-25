@@ -1,9 +1,11 @@
-# CareGuard: ED Breach Risk Prediction via Simulation + Explainable ML
+# CareGuard: ED Breach Risk Prediction via Simulation + Explainable ML  [![Live Demo](https://img.shields.io/badge/Live%20App-Click%20Here-brightgreen)](https://careguard-breach-risk-prediction-system.streamlit.app/)
 
 > A real-time decision-support system to predict 4-hour Emergency Department (ED) breaches using discrete-event simulation and interpretable machine learning.
 
 ---
-[![Live Demo](https://img.shields.io/badge/Live%20App-Click%20Here-brightgreen)](https://careguard-breach-risk-prediction-system.streamlit.app/)
+
+👉 **Try the live app:**  
+https://careguard-breach-risk-prediction-system.streamlit.app/
 
 ## TL;DR
 
